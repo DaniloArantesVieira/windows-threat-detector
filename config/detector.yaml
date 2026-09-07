@@ -1,0 +1,13 @@
+authentication:
+  brute_force:
+    enabled: true
+    event_id: 4625
+
+    threshold: 5
+    window_seconds: 300
+
+    severity: HIGH
+
+    mitre:
+      id: T1110
+      technique: Brute Force
