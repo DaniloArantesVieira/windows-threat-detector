@@ -1,16 +1,20 @@
 # Windows Threat Detector
 
-Ferramenta de **Blue Team** desenvolvida em Python para análise de eventos de segurança do Windows, correlação de falhas de autenticação e identificação de comportamentos potencialmente maliciosos.
+[![CI](https://github.com/DaniloArantesVieira/windows-threat-detector/actions/workflows/ci.yml/badge.svg)](https://github.com/DaniloArantesVieira/windows-threat-detector/actions/workflows/ci.yml)
 
-O projeto utiliza o **Windows Security Event Log** como fonte de dados, realiza a normalização dos eventos, aplica regras de correlação e associa as detecções a técnicas do framework **MITRE ATT&CK**.
+Ferramenta de **Blue Team** desenvolvida em Python para análise do Windows Security Event Log, correlação de eventos de autenticação e identificação de comportamentos potencialmente maliciosos.
+
+O projeto coleta e normaliza eventos de segurança do Windows, aplica regras de detecção e correlação e associa os alertas gerados a técnicas do framework **MITRE ATT&CK**.
 
 > Projeto desenvolvido para fins educacionais, laboratoriais e defensivos de Segurança da Informação.
 
 ---
 
-## Objetivo
+## Visão geral
 
-O objetivo do Windows Threat Detector é construir uma ferramenta modular de detecção para ambientes Windows capaz de:
+O Windows Threat Detector foi criado como uma ferramenta modular de detecção para ambientes Windows e como laboratório prático de segurança defensiva.
+
+O projeto tem como principais objetivos:
 
 - coletar eventos reais do Windows;
 - normalizar logs em estruturas internas;
@@ -22,13 +26,23 @@ O objetivo do Windows Threat Detector é construir uma ferramenta modular de det
 - permitir configuração externa das regras;
 - validar a lógica de detecção através de testes automatizados.
 
-O projeto também tem como objetivo servir como laboratório prático de:
+A primeira detecção implementada analisa falhas de autenticação registradas pelo **Windows Event ID 4625** e procura identificar padrões compatíveis com ataques de força bruta.
+
+O detector não considera uma falha de autenticação isolada como um ataque. Os eventos são correlacionados utilizando informações como:
+
+- usuário;
+- endereço IP de origem;
+- quantidade de falhas;
+- janela temporal.
+
+Além do desenvolvimento da ferramenta, o projeto serve como laboratório prático de:
 
 - Blue Team;
 - SOC;
 - Detection Engineering;
 - Windows Event Logs;
 - Threat Detection;
+- Event Correlation;
 - MITRE ATT&CK;
 - Python aplicado à Segurança da Informação.
 
@@ -58,27 +72,7 @@ Atualmente o projeto possui:
 
 ---
 
-## Estado atual do projeto
-
-A primeira versão funcional do Windows Threat Detector já possui um fluxo completo de:
-
-```text
-Coleta
-  ↓
-Normalização
-  ↓
-Interpretação
-  ↓
-Correlação
-  ↓
-Detecção
-  ↓
-Alerta
-  ↓
-MITRE ATT&CK
-```
-
-### Componentes implementados
+## Componentes implementados
 
 ```text
 Windows Event Log                 ✅
