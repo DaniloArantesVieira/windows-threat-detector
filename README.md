@@ -68,7 +68,8 @@ Atualmente o projeto possui:
 - configuração das regras através de YAML;
 - geração estruturada de objetos `Alert`;
 - mapeamento para MITRE ATT&CK;
-- testes automatizados utilizando `pytest`.
+- testes automatizados utilizando `pytest`;
+- integração contínua através do GitHub Actions.
 
 ---
 
@@ -86,10 +87,10 @@ Windows Security Event Log
  WindowsEventCollector
             |
             v
-      SecurityEvent
+     SecurityEvent
             |
             v
-   Event ID 4625 Parser
+ Event ID 4625 Parser
             |
             v
  AuthenticationDetector
@@ -112,7 +113,16 @@ Windows Security Event Log
         MITRE ATT&CK T1110
 ```
 
-A arquitetura foi dividida em componentes para evitar que toda a lógica da aplicação fique concentrada em um único arquivo.
+A arquitetura foi dividida em componentes independentes para evitar que toda a lógica da aplicação fique concentrada em um único arquivo.
+
+Os componentes são separados por responsabilidades de:
+
+- coleta;
+- normalização;
+- detecção;
+- modelagem;
+- mapeamento MITRE ATT&CK;
+- apresentação dos alertas.
 
 ---
 
@@ -120,6 +130,10 @@ A arquitetura foi dividida em componentes para evitar que toda a lógica da apli
 
 ```text
 windows-threat-detector/
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 │
 ├── config/
 │   └── detector.yaml
@@ -159,15 +173,16 @@ windows-threat-detector/
 ├── reports/
 │
 ├── .gitignore
+├── LICENSE
+├── README.md
 ├── pyproject.toml
 ├── requirements.txt
-├── requirements-dev.txt
-└── README.md
+└── requirements-dev.txt
 ```
 
 ---
 
-## Componentes
+## Principais componentes
 
 ### WindowsEventCollector
 
@@ -179,19 +194,22 @@ src/threat_detector/collector/windows_eventlog.py
 
 Responsável por acessar o Windows Event Log através da biblioteca `pywin32`.
 
+O coletor realiza a leitura dos eventos e os transforma em objetos internos utilizados pelo restante da aplicação.
+
 Fluxo:
 
 ```text
 Windows
-   ↓
+   |
+   v
 Security Event Log
-   ↓
+   |
+   v
 pywin32
-   ↓
+   |
+   v
 WindowsEventCollector
 ```
-
-O coletor realiza a leitura dos eventos e os transforma em objetos internos utilizados pelo restante da aplicação.
 
 ---
 
@@ -207,22 +225,20 @@ Representa um evento de segurança normalizado.
 
 Em vez de todas as partes do programa trabalharem diretamente com a estrutura original dos logs do Windows, os dados são convertidos para um formato consistente.
 
-Exemplos de informações armazenadas:
+Entre as informações representadas estão:
 
-```text
-Event ID
-Timestamp
-Computer
-Channel
-Username
-Domain
-Source IP
-Source Port
-Logon Type
-Process
-Status
-Substatus
-```
+- Event ID;
+- timestamp;
+- computador;
+- canal;
+- usuário;
+- domínio;
+- endereço IP de origem;
+- porta de origem;
+- Logon Type;
+- processo;
+- status;
+- substatus.
 
 ---
 
@@ -234,23 +250,23 @@ Arquivo:
 src/threat_detector/detection/authentication.py
 ```
 
-Responsável por analisar eventos relacionados à autenticação.
+Responsável por analisar eventos relacionados à autenticação e aplicar regras de correlação.
 
-A primeira detecção implementada é a identificação de possíveis ataques de força bruta através do Event ID `4625`.
-
-O detector agrupa os eventos considerando:
+A primeira regra implementada identifica possíveis ataques de força bruta através da combinação de:
 
 ```text
 Usuário
    +
 IP de origem
    +
+Quantidade de falhas
+   +
 Janela temporal
 ```
 
 A simples existência de múltiplos eventos `4625` não é suficiente para gerar um alerta.
 
-Isso ajuda a reduzir falsos positivos.
+Essa estratégia ajuda a reduzir falsos positivos.
 
 ---
 
@@ -262,7 +278,7 @@ Arquivo:
 src/threat_detector/models/alert.py
 ```
 
-Representa um comportamento considerado relevante pelo mecanismo de detecção.
+Representa uma conclusão produzida pelo mecanismo de detecção.
 
 Existe uma separação proposital entre:
 
@@ -276,25 +292,21 @@ e:
 Alert
 ```
 
-Um `SecurityEvent` representa algo que ocorreu no sistema.
+Um `SecurityEvent` representa algo observado no sistema.
 
-Um `Alert` representa uma conclusão produzida pelo mecanismo de detecção após analisar um ou vários eventos.
+Um `Alert` representa uma conclusão produzida após a análise e correlação de um ou vários eventos.
+
+Essa distinção permite que múltiplos eventos sejam avaliados antes que o sistema classifique determinado comportamento como potencialmente suspeito.
 
 ---
 
 ## Detecção implementada
 
-### Possível ataque de força bruta
+### Brute force — Event ID 4625
 
-A primeira regra implementada analisa:
+A primeira regra implementada analisa o **Windows Event ID `4625`**, que registra uma tentativa malsucedida de logon.
 
-```text
-Windows Event ID 4625
-```
-
-Esse evento representa uma falha de logon.
-
-A detecção considera:
+A detecção correlaciona:
 
 ```text
 Event ID 4625
@@ -311,111 +323,34 @@ janela temporal configurada
 Possível ataque de força bruta
 ```
 
-A regra atual do ambiente de laboratório utiliza:
+No ambiente de laboratório, a configuração padrão utiliza:
 
 ```text
-5 falhas
-dentro de
-300 segundos
+5 falhas em 300 segundos
 ```
 
 para o mesmo usuário e endereço IP.
 
-A existência de múltiplos eventos `4625` isoladamente não é suficiente para caracterizar um possível ataque de força bruta.
+Múltiplos eventos `4625` isolados não são considerados evidência suficiente para gerar um alerta.
 
----
+A correlação busca reduzir falsos positivos e identificar padrões de comportamento.
 
-## Configuração
+### Informações analisadas
 
-As regras não ficam fixas diretamente no código Python.
+Durante a normalização e interpretação dos eventos, o detector pode trabalhar com informações como:
 
-A configuração é armazenada em:
-
-```text
-config/detector.yaml
-```
-
-Configuração atual:
-
-```yaml
-authentication:
-  brute_force:
-    enabled: true
-    event_id: 4625
-    threshold: 5
-    window_seconds: 300
-    severity: HIGH
-
-    mitre:
-      id: T1110
-      technique: Brute Force
-```
-
-Isso permite alterar a sensibilidade da detecção sem modificar o código-fonte.
-
-Por exemplo:
-
-```yaml
-threshold: 10
-```
-
-pode ser utilizado para exigir dez falhas antes da geração do alerta.
-
----
-
-## MITRE ATT&CK
-
-A detecção atual é mapeada para:
-
-```text
-T1110 - Brute Force
-```
-
-Fluxo:
-
-```text
-Falhas de autenticação
-        ↓
-Event ID 4625
-        ↓
-Correlação temporal
-        ↓
-Possível Brute Force
-        ↓
-MITRE ATT&CK
-        ↓
-T1110
-```
-
-O mapeamento das técnicas fica centralizado em:
-
-```text
-src/threat_detector/mitre/mappings.py
-```
-
-A intenção é ampliar gradualmente essa estrutura à medida que novas detecções forem implementadas.
-
----
-
-## Windows Event ID 4625
-
-O Event ID `4625` registra uma tentativa malsucedida de logon.
-
-Durante os testes do projeto, foram extraídas informações como:
-
-```text
-Usuário
-Domínio
-Status
-Substatus
-Logon Type
-Logon Process
-Authentication Package
-Process ID
-Process Name
-Source IP
-Source Port
-```
+- usuário;
+- domínio;
+- timestamp;
+- status;
+- substatus;
+- Logon Type;
+- Logon Process;
+- Authentication Package;
+- Process ID;
+- Process Name;
+- endereço IP de origem;
+- porta de origem.
 
 Exemplo anonimizado de evento analisado durante o laboratório:
 
@@ -432,35 +367,80 @@ Processo       : C:\Windows\System32\svchost.exe
 IP de origem   : ::1
 ```
 
-Nesse cenário:
+Nesse exemplo:
+
+- `0xc000006d` representa uma falha de autenticação;
+- `0xc000006a` indica uma situação de senha incorreta;
+- `::1` representa o endereço IPv6 de loopback, equivalente a `127.0.0.1` em IPv4.
+
+### MITRE ATT&CK
+
+A detecção atual é mapeada para:
 
 ```text
-0xc000006d
+T1110 — Brute Force
 ```
 
-indica uma falha de autenticação.
-
-O substatus:
+O fluxo de classificação é:
 
 ```text
-0xc000006a
+Falhas de autenticação
+        |
+        v
+Event ID 4625
+        |
+        v
+Correlação temporal
+        |
+        v
+Possível Brute Force
+        |
+        v
+MITRE ATT&CK T1110
 ```
 
-indica uma situação de senha incorreta.
-
-O endereço:
+Os mapeamentos das técnicas ficam centralizados em:
 
 ```text
-::1
+src/threat_detector/mitre/mappings.py
 ```
 
-representa o endereço IPv6 de loopback, equivalente ao:
+Essa estrutura deverá ser ampliada à medida que novas detecções forem implementadas.
+
+---
+
+## Configuração
+
+As regras de detecção são configuradas externamente através de:
 
 ```text
-127.0.0.1
+config/detector.yaml
 ```
 
-em IPv4.
+Configuração atual:
+
+```yaml
+authentication:
+  brute_force:
+    enabled: true
+    event_id: 4625
+    threshold: 5
+    window_seconds: 300
+    severity: HIGH
+    mitre:
+      id: T1110
+      technique: Brute Force
+```
+
+Isso permite alterar a sensibilidade da detecção sem modificar o código-fonte.
+
+Por exemplo:
+
+```yaml
+threshold: 10
+```
+
+faz com que sejam necessárias dez falhas correlacionadas antes da geração do alerta.
 
 ---
 
@@ -486,15 +466,20 @@ O fluxo observado foi:
 
 ```text
 Tentativa de autenticação inválida
-              ↓
+              |
+              v
 Windows registra Event ID 4625
-              ↓
+              |
+              v
 Security Event Log
-              ↓
+              |
+              v
 WindowsEventCollector
-              ↓
+              |
+              v
 SecurityEvent
-              ↓
+              |
+              v
 Windows Threat Detector
 ```
 
@@ -508,11 +493,17 @@ Exemplo de execução no ambiente de laboratório:
 
 ```text
 Windows Threat Detector v0.1
+
 [*] Inicializando detector...
+
 [*] Regra carregada: 5 falhas em 300 segundos.
+
 [*] Coletando falhas de autenticação (Event ID 4625)...
+
 [+] 7 falhas de autenticação encontradas.
+
 [*] Executando análise de correlação...
+
 [OK] Nenhum padrão de força bruta detectado.
 ```
 
@@ -522,11 +513,11 @@ Entretanto, eles não atendem simultaneamente aos critérios necessários para c
 
 ```text
 mesmo usuário
-+
+      +
 mesmo IP
-+
+      +
 5 ou mais falhas
-+
+      +
 dentro de 300 segundos
 ```
 
@@ -544,24 +535,25 @@ Quando a quantidade configurada de eventos correlacionados é atingida, o detect
 ======================================================================
 WINDOWS THREAT DETECTOR - ALERTA
 ======================================================================
-Severidade     : HIGH
-Título         : Possível ataque de força bruta
-Descrição      : 5 falhas de autenticação foram detectadas dentro
-                 da janela configurada.
+
+Severidade      : HIGH
+Título          : Possível ataque de força bruta
+Descrição       : 5 falhas de autenticação foram detectadas dentro
+                  da janela configurada.
 
 Evidências
 ----------------------------------------------------------------------
-Event ID       : 4625
-Usuário        : lab-user
-IP de origem   : 192.0.2.10
-Tentativas     : 5
-Primeiro evento: 2026-09-07 10:00:00
-Último evento  : 2026-09-07 10:02:00
+Event ID        : 4625
+Usuário         : lab-user
+IP de origem    : 192.0.2.10
+Tentativas      : 5
+Primeiro evento : 2026-09-07 10:00:00
+Último evento   : 2026-09-07 10:02:00
 
 MITRE ATT&CK
 ----------------------------------------------------------------------
-Técnica        : T1110
-Nome           : Brute Force
+Técnica         : T1110
+Nome            : Brute Force
 ======================================================================
 ```
 
@@ -579,7 +571,7 @@ Arquivo:
 tests/test_authentication.py
 ```
 
-Atualmente são validados quatro cenários.
+Atualmente são validados quatro cenários principais.
 
 ### 1. Poucas falhas
 
@@ -588,7 +580,8 @@ Atualmente são validados quatro cenários.
 mesmo usuário
 mesmo IP
 dentro da janela
-        ↓
+        |
+        v
 nenhum alerta
 ```
 
@@ -603,9 +596,11 @@ Um dos testes instancia o detector com um `threshold` específico de `10` tentat
 mesmo usuário
 mesmo IP
 dentro de 300 segundos
-        ↓
+        |
+        v
 alerta HIGH
-        ↓
+        |
+        v
 MITRE T1110
 ```
 
@@ -634,29 +629,27 @@ Eventos provenientes de IPs diferentes não são agrupados como se fossem uma ú
 Exemplo:
 
 ```text
-192.0.2.10 → 5 falhas
-192.0.2.20 → 5 falhas
+192.0.2.10 -> 5 falhas
+192.0.2.20 -> 5 falhas
 ```
 
 não é interpretado automaticamente como:
 
 ```text
-10 falhas → ataque
+10 falhas -> ataque
 ```
 
 Cada origem é analisada separadamente.
 
----
+### Resultado atual
 
-## Resultado atual dos testes
-
-Execução:
+Execute:
 
 ```powershell
 pytest -v
 ```
 
-Resultado:
+Resultado esperado:
 
 ```text
 tests/test_authentication.py::test_three_failures_do_not_generate_alert PASSED
@@ -668,6 +661,8 @@ tests/test_authentication.py::test_different_source_ips_are_not_combined PASSED
 ```
 
 Os testes permitem validar a lógica de detecção sem a necessidade de gerar repetidamente falhas reais de autenticação no sistema operacional.
+
+Além da execução local, a suíte é executada automaticamente através do **GitHub Actions**.
 
 ---
 
@@ -719,6 +714,12 @@ Instale as dependências:
 pip install -r requirements.txt
 ```
 
+Para desenvolvimento e testes:
+
+```powershell
+pip install -r requirements-dev.txt
+```
+
 ---
 
 ## Dependências
@@ -736,23 +737,17 @@ pywin32
 PyYAML
 ```
 
-Para desenvolvimento e testes:
+As dependências utilizadas para desenvolvimento e testes ficam em:
 
 ```text
 requirements-dev.txt
 ```
 
-com:
+incluindo:
 
 ```text
 -r requirements.txt
 pytest
-```
-
-Instalação completa para desenvolvimento:
-
-```powershell
-pip install -r requirements-dev.txt
 ```
 
 ---
@@ -814,12 +809,6 @@ O canal `Security` possui restrições adicionais de acesso impostas pelo Window
 A partir da raiz do projeto:
 
 ```powershell
-cd windows-threat-detector
-```
-
-Execute:
-
-```powershell
 pytest -v
 ```
 
@@ -845,14 +834,17 @@ Por isso, a lógica atual utiliza correlação:
 
 ```text
 Event ID
-+
+   +
 Usuário
-+
+   +
 Origem
-+
+   +
 Quantidade
-+
+   +
 Tempo
+   |
+   v
+Avaliação do comportamento
 ```
 
 somente então avaliando se o comportamento pode representar uma ameaça.
@@ -865,25 +857,24 @@ Essa abordagem aproxima o projeto de uma lógica utilizada em soluções defensi
 
 ### v0.1 — Authentication Detection
 
-```text
-[✓] Estrutura modular Python
-[✓] Windows Security Event Log
-[✓] pywin32
-[✓] Event ID 4625
-[✓] SecurityEvent
-[✓] Parser de falhas de autenticação
-[✓] Extração de usuário
-[✓] Extração de endereço IP
-[✓] Extração de processo
-[✓] Correlação temporal
-[✓] Agrupamento por usuário + IP
-[✓] Detecção de força bruta
-[✓] Alert model
-[✓] MITRE ATT&CK T1110
-[✓] Configuração YAML
-[✓] Testes automatizados
-[✓] 4 testes passando
-```
+- [x] Estrutura modular Python
+- [x] Windows Security Event Log
+- [x] `pywin32`
+- [x] Event ID `4625`
+- [x] `SecurityEvent`
+- [x] Parser de falhas de autenticação
+- [x] Extração de usuário
+- [x] Extração de endereço IP
+- [x] Extração de processo
+- [x] Correlação temporal
+- [x] Agrupamento por usuário + IP
+- [x] Detecção de força bruta
+- [x] modelo `Alert`
+- [x] MITRE ATT&CK `T1110`
+- [x] configuração YAML
+- [x] testes automatizados
+- [x] 4 testes passando
+- [x] GitHub Actions CI
 
 ---
 
@@ -947,59 +938,23 @@ Essa abordagem aproxima o projeto de uma lógica utilizada em soluções defensi
 
 ---
 
-## Próximas detecções planejadas
-
-O objetivo é evoluir gradualmente o projeto para detectar comportamentos como:
-
-```text
-Falhas repetidas de autenticação
-Criação de usuários
-Alterações de privilégios
-Criação de serviços
-Execução suspeita de PowerShell
-Criação de processos
-Limpeza de logs
-Atividade de persistência
-Conexões suspeitas
-```
-
-Cada nova detecção deverá possuir:
-
-```text
-Evento
-  ↓
-Normalização
-  ↓
-Regra de detecção
-  ↓
-MITRE ATT&CK
-  ↓
-Alert
-  ↓
-Teste automatizado
-```
-
----
-
 ## Finalidade do projeto
 
 O Windows Threat Detector não tem como objetivo substituir soluções comerciais de EDR, XDR ou SIEM.
 
 O projeto foi criado como laboratório de estudo e portfólio para demonstrar conhecimentos práticos relacionados a:
 
-```text
-Blue Team
-SOC
-Detection Engineering
-Windows Security
-Windows Event Logs
-Log Analysis
-Event Correlation
-Threat Detection
-MITRE ATT&CK
-Python
-Testes automatizados
-```
+- Blue Team;
+- SOC;
+- Detection Engineering;
+- Windows Security;
+- Windows Event Logs;
+- Log Analysis;
+- Event Correlation;
+- Threat Detection;
+- MITRE ATT&CK;
+- Python;
+- testes automatizados.
 
 ---
 
@@ -1015,6 +970,12 @@ Este projeto deve ser utilizado exclusivamente para:
 - monitoramento de sistemas sob responsabilidade do usuário.
 
 Não utilize a ferramenta em ambientes nos quais você não possui autorização.
+
+---
+
+## Licença
+
+Este projeto é distribuído sob os termos da [MIT License](LICENSE).
 
 ---
 
