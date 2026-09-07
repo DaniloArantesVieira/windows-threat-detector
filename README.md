@@ -804,22 +804,6 @@ O canal `Security` possui restrições adicionais de acesso impostas pelo Window
 
 ---
 
-## Executando os testes
-
-A partir da raiz do projeto:
-
-```powershell
-pytest -v
-```
-
-Resultado esperado atualmente:
-
-```text
-4 passed
-```
-
----
-
 ## Segurança e redução de falsos positivos
 
 O projeto foi desenvolvido evitando uma associação simplista como:
