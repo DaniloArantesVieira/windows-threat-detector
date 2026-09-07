@@ -72,29 +72,6 @@ Atualmente o projeto possui:
 
 ---
 
-## Componentes implementados
-
-```text
-Windows Event Log                 ✅
-Canal Security                    ✅
-Coleta com pywin32                ✅
-SecurityEvent                     ✅
-Event ID 4625                     ✅
-Parser de autenticação            ✅
-Extração de usuário               ✅
-Extração de IP                    ✅
-Extração de processo              ✅
-Correlação temporal               ✅
-Agrupamento usuário + IP          ✅
-Detecção de brute force           ✅
-Alert model                       ✅
-MITRE ATT&CK T1110                ✅
-Configuração YAML                 ✅
-Testes automatizados              ✅
-```
-
----
-
 ## Arquitetura
 
 O fluxo atual da aplicação é:
