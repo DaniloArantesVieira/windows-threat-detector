@@ -1,0 +1,89 @@
+name: Relatar um bug
+description: Informe um comportamento incorreto ou inesperado do detector.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por contribuir. Antes de enviar, remova credenciais, dados pessoais e informações reais do laboratório.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição do problema
+      description: Explique de forma clara o problema encontrado.
+      placeholder: O que aconteceu e em qual contexto?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Comportamento esperado
+      description: Descreva o resultado que você esperava obter.
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed-behavior
+    attributes:
+      label: Comportamento observado
+      description: Descreva o resultado efetivamente observado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: Passos para reproduzir
+      description: Forneça uma sequência mínima e reproduzível, usando somente dados anonimizados.
+      placeholder: |
+        1. Configure ...
+        2. Execute ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Ambiente
+      description: Informe os detalhes relevantes do ambiente, sem nomes, IPs ou dados sensíveis reais.
+      placeholder: Edição do Windows, arquitetura, forma de instalação e contexto de execução.
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Versão do Python
+      placeholder: "Exemplo: 3.12.4"
+    validations:
+      required: true
+
+  - type: input
+    id: windows-version
+    attributes:
+      label: Versão do Windows
+      placeholder: "Exemplo: Windows 11 23H2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs relevantes
+      description: Cole apenas trechos necessários e anonimizados. Se não houver, informe “Não disponível”.
+      render: shell
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: sensitive-data
+    attributes:
+      label: Proteção de dados
+      options:
+        - label: Confirmei que credenciais, dados pessoais, IPs reais e outras informações sensíveis foram removidos.
+          required: true
