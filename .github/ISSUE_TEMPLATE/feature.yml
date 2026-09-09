@@ -1,0 +1,61 @@
+name: Solicitar uma funcionalidade
+description: Proponha uma melhoria ou nova capacidade para o detector.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Descreva a necessidade e o resultado desejado. Não inclua dados reais ou sensíveis do laboratório.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema ou necessidade
+      description: Qual problema defensivo, operacional ou educacional esta proposta pretende resolver?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Solução proposta
+      description: Explique de forma objetiva como a funcionalidade poderia atender à necessidade.
+    validations:
+      required: true
+
+  - type: textarea
+    id: windows-events
+    attributes:
+      label: Eventos do Windows envolvidos
+      description: Informe Event IDs e canais relevantes. Caso não se aplique, escreva “Não aplicável”.
+      placeholder: "Exemplo: Event ID 1102 — Security"
+    validations:
+      required: true
+
+  - type: textarea
+    id: mitre-attack
+    attributes:
+      label: MITRE ATT&CK relacionado
+      description: Informe técnicas ou sub-técnicas relevantes. Caso não se aplique, escreva “Não aplicável”.
+      placeholder: "Exemplo: T1070.001 — Clear Windows Event Logs"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Critérios de aceitação
+      description: Liste condições objetivas para considerar a proposta concluída.
+      placeholder: |
+        - [ ] Critério 1
+        - [ ] Critério 2
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: Observações adicionais
+      description: Inclua alternativas consideradas, referências públicas ou outras informações úteis.

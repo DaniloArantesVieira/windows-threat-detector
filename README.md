@@ -662,7 +662,13 @@ tests/test_authentication.py::test_different_source_ips_are_not_combined PASSED
 
 Os testes permitem validar a lógica de detecção sem a necessidade de gerar repetidamente falhas reais de autenticação no sistema operacional.
 
-Além da execução local, a suíte é executada automaticamente através do **GitHub Actions**.
+Além da execução local, a suíte é executada automaticamente através do **GitHub Actions**. O CI também valida o código com o **Ruff**.
+
+Para executar o lint localmente:
+
+```powershell
+python -m ruff check .
+```
 
 ---
 
@@ -676,6 +682,7 @@ Python 3.11+
 pywin32
 PyYAML
 pytest
+ruff
 ```
 
 A leitura do Windows Security Event Log pode exigir privilégios administrativos.
@@ -748,6 +755,7 @@ incluindo:
 ```text
 -r requirements.txt
 pytest
+ruff
 ```
 
 ---

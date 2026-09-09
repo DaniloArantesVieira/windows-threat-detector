@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Política de segurança e divulgação responsável
+    url: https://github.com/DaniloArantesVieira/windows-threat-detector/security/policy
+    about: Consulte a política antes de relatar vulnerabilidades e não publique detalhes sensíveis em uma Issue.
